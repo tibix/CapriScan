@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide de notation CapriScan</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Playfair+Display:wght@700&display=swap');
+  :root{ --bg:#0a1a0e; --surf:#111f14; --surf2:#182a1c; --brd:#1e3322; --txt:#edf2ee; --muted:#6b8f72; --acc:#3dba6a; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ height:100%; overflow:hidden; background:var(--bg); color:var(--txt); font-family:'Inter',sans-serif; }
+  .app{ display:flex; flex-direction:column; height:100vh; }
+  header{ background:var(--surf); border-bottom:1px solid var(--brd); padding:10px 16px; display:flex; align-items:center; gap:12px; flex-shrink:0; }
+  .logo{ font-family:'Playfair Display',serif; font-size:1.1rem; font-weight:700; }
+  .logo span{ color:var(--acc); }
+  .tagline{ font-size:0.65rem; color:var(--muted); letter-spacing:0.08em; text-transform:uppercase; }
+  nav{ background:var(--surf); border-bottom:2px solid var(--brd); display:flex; flex-shrink:0; }
+  nav button{ flex:1; padding:10px 4px; border:none; background:transparent; color:var(--muted); font-size:0.72rem; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; border-bottom:3px solid transparent; transition:all .2s; white-space:nowrap; }
+  nav button.active{ color:var(--acc); border-bottom-color:var(--acc); background:rgba(61,186,106,.07); }
+  .content{ flex:1; overflow-y:auto; padding:16px; }
+  .intro{ background:var(--surf); border:1px solid var(--brd); border-radius:12px; padding:12px 16px; margin-bottom:14px; display:flex; gap:12px; }
+  .intro-icon{ font-size:1.6rem; flex-shrink:0; }
+  .intro h2{ font-family:'Playfair Display',serif; font-size:1.1rem; margin-bottom:3px; }
+  .intro p{ color:var(--muted); font-size:0.78rem; line-height:1.5; }
+  .scale{ display:flex; gap:5px; margin-bottom:14px; overflow-x:auto; }
+  .sc{ flex:1; min-width:80px; background:var(--surf); border:1px solid var(--brd); border-radius:8px; padding:6px 8px; display:flex; align-items:center; gap:6px; }
+  .sc-dot{ width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.75rem; color:#0a1a0e; flex-shrink:0; }
+  .sc-txt strong{ display:block; font-size:0.68rem; font-weight:700; }
+  .sc-txt span{ color:var(--muted); font-size:0.6rem; }
+  .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .card{ background:var(--surf); border:1.5px solid var(--brd); border-radius:14px; overflow:hidden; }
+  .card-head{ display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid var(--brd); }
+  .badge{ width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.95rem; color:#0a1a0e; flex-shrink:0; }
+  .card-label{ font-weight:700; font-size:0.88rem; }
+  .card-sub{ font-size:0.67rem; color:var(--muted); }
+  .illus{ padding:12px; background:var(--surf2); display:flex; justify-content:center; min-height:180px; align-items:center; }
+  .desc{ padding:11px 14px; font-size:0.77rem; color:var(--muted); line-height:1.55; }
+  .desc strong{ color:var(--txt); }
+  .tags{ padding:0 14px 11px; display:flex; flex-wrap:wrap; gap:5px; }
+  .tag{ font-size:0.65rem; padding:2px 7px; border-radius:8px; border:1px solid; font-weight:600; }
+  .about{ background:var(--surf); border-top:2px solid var(--brd); padding:20px 24px; margin-top:24px; border-radius:14px; }
+  .about h3{ font-family:'Playfair Display',serif; font-size:1rem; color:var(--acc); margin-bottom:8px; }
+  .about p{ font-size:0.78rem; color:var(--muted); line-height:1.6; }
+  @media(max-width:900px){ .grid{ grid-template-columns:repeat(2,1fr); } }
+  @media(max-width:600px){ .grid{ grid-template-columns:1fr; } nav button{ font-size:0.62rem; padding:10px 2px; } }
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo">Capri<span>Scan</span></div>
+  <div class="tagline">Guide de notation caprine · Échelle 1→6</div>
+</header>
+<nav id="nav"></nav>
+<div class="content" id="content"></div>
+</div>
+<script>
+const C=['#3dba6a','#7ed67a','#f5c842','#f5a042','#e05252','#cc2233'];
+const NL=['Excellent','Bon','Moyen','Mauvais','Médiocre','Réforme'];
+
+// SVG helpers
+const mamSVG=(col,rx,ry,tx,ty,tw,th)=>`
+<ellipse cx="100" cy="48" rx="55" ry="19" fill="#1a2e1c" stroke="${col}" stroke-width="1.5"/>
+<ellipse cx="100" cy="${70+ty}" rx="${rx}" ry="${ry}" fill="#1e3322" stroke="${col}" stroke-width="2"/>
+<rect x="${83+tx}" y="${85+ty}" width="${tw}" height="${th}" rx="4" fill="${col}" opacity=".6" transform="rotate(${tw<8?0:8},${87+tx},${93+ty})"/>
+<rect x="${109-tx}" y="${85+ty}" width="${tw}" height="${th}" rx="4" fill="${col}" opacity=".6" transform="rotate(${tw<8?0:-8},${113-tx},${93+ty})"/>`;
+
+const patteSVG=(col,d1,d2,d3,d4)=>`
+<ellipse cx="100" cy="40" rx="60" ry="22" fill="#1e3322" stroke="${col}" stroke-width="1.5"/>
+${[68,87,113,132].map((x,i)=>{const d=[d1,d2,d3,d4][i];
+  return d?`<path d="M ${x} 60 L ${d.m} 82 L ${d.e} 100" stroke="${col}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`:
+  `<line x1="${x}" y1="60" x2="${x}" y2="100" stroke="${col}" stroke-width="4" stroke-linecap="round"/>`;}).join('')}`;
+
+const CRITERES=[
+{id:'laitiere',icon:'🥛',label:'Lait',title:'Production laitière',
+ desc:"Évaluation de la quantité de la production. S'observe au visuel et au touché par le remplissage de la mamelle lors de la traite.",
+ scale:['Production max','Très bonne','Correcte','Faible','Très faible','Nulle / patho.'],
+ notes:[
+  {label:'Excellent',sub:'Production exceptionnelle',tags:['Production max','Symétrie parfaite'],
+   desc:"<strong>À observer :</strong> Mamelle très volumineuse et bien remplie, symétrique, ferme. Flancs plats, côtes légèrement saillantes (caractère laitier). Production régulière aux deux traites.",
+   svg:`<ellipse cx="100" cy="58" rx="70" ry="36" fill="#1e3322" stroke="#3dba6a" stroke-width="2"/>
+<ellipse cx="75" cy="72" rx="13" ry="17" fill="#3dba6a" opacity=".3"/><ellipse cx="125" cy="72" rx="13" ry="17" fill="#3dba6a" opacity=".3"/>
+<line x1="75" y1="89" x2="75" y2="100" stroke="#3dba6a" stroke-width="3" stroke-linecap="round"/>
+<line x1="125" y1="89" x2="125" y2="100" stroke="#3dba6a" stroke-width="3" stroke-linecap="round"/>
+<circle cx="75" cy="102" r="3" fill="#3dba6a"/><circle cx="125" cy="102" r="3" fill="#3dba6a"/>
+<text x="100" y="18" text-anchor="middle" fill="#3dba6a" font-size="11" font-weight="700">Mamelle très bien remplie</text>
+<text x="100" y="32" text-anchor="middle" fill="#6b8f72" font-size="9">Symétrique · Ferme · Bien attachée</text>`},
+  {label:'Bonne',sub:'Très bonne production',tags:['À conserver','Légère asymétrie'],
+   desc:"<strong>À observer :</strong> Bonne production, légère asymétrie ou légère irrégularité entre traites acceptable. Animal à conserver et utilisable en reproduction.",
+   svg:`<ellipse cx="100" cy="60" rx="62" ry="32" fill="#1e3322" stroke="#7ed67a" stroke-width="2"/>
+<ellipse cx="76" cy="72" rx="11" ry="14" fill="#7ed67a" opacity=".3"/><ellipse cx="124" cy="74" rx="10" ry="12" fill="#7ed67a" opacity=".25"/>
+<line x1="76" y1="86" x2="76" y2="97" stroke="#7ed67a" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="124" y1="86" x2="124" y2="96" stroke="#7ed67a" stroke-width="2.5" stroke-linecap="round"/>
+<text x="100" y="18" text-anchor="middle" fill="#7ed67a" font-size="11" font-weight="700">Bonne production</text>
+<text x="100" y="32" text-anchor="middle" fill="#6b8f72" font-size="9">Légère asymétrie acceptable</text>`},
+  {label:'Moyen',sub:'Production correcte',tags:['À surveiller','Asymétrie modérée'],
+   desc:"<strong>À observer :</strong> Production dans la moyenne basse du troupeau, asymétrie modérée. Fonctionnel mais non prioritaire pour la sélection.",
+   svg:`<ellipse cx="100" cy="63" rx="52" ry="26" fill="#1e3322" stroke="#f5c842" stroke-width="2"/>
+<ellipse cx="78" cy="74" rx="9" ry="11" fill="#f5c842" opacity=".22"/><ellipse cx="122" cy="76" rx="8" ry="9" fill="#f5c842" opacity=".18"/>
+<line x1="78" y1="85" x2="78" y2="94" stroke="#f5c842" stroke-width="2" stroke-linecap="round"/>
+<line x1="122" y1="85" x2="122" y2="93" stroke="#f5c842" stroke-width="2" stroke-linecap="round"/>
+<text x="100" y="18" text-anchor="middle" fill="#f5c842" font-size="11" font-weight="700">Production dans la moyenne</text>
+<text x="100" y="32" text-anchor="middle" fill="#6b8f72" font-size="9">Asymétrie modérée visible</text>`},
+  {label:'Mauvais',sub:'Production insuffisante',tags:['Forte asymétrie','Exclure sélection'],
+   desc:"<strong>À observer :</strong> Production nettement inférieure à la moyenne, forte asymétrie ou mamelle peu développée. À exclure de la sélection.",
+   svg:`<ellipse cx="100" cy="65" rx="42" ry="21" fill="#1e3322" stroke="#f5a042" stroke-width="2"/>
+<ellipse cx="82" cy="73" rx="7" ry="9" fill="#f5a042" opacity=".2"/><ellipse cx="118" cy="76" rx="6" ry="6" fill="#f5a042" opacity=".15"/>
+<line x1="82" y1="82" x2="82" y2="91" stroke="#f5a042" stroke-width="2" stroke-linecap="round"/>
+<line x1="118" y1="82" x2="118" y2="89" stroke="#f5a042" stroke-width="2" stroke-linecap="round"/>
+<text x="100" y="18" text-anchor="middle" fill="#f5a042" font-size="11" font-weight="700">Production faible</text>
+<text x="100" y="32" text-anchor="middle" fill="#6b8f72" font-size="9">Forte asymétrie · Mamelle peu remplie</text>`},
+  {label:'Médiocre',sub:'Très faible production',tags:['Réforme programmée'],
+   desc:"<strong>À observer :</strong> Production très faible, mamelle atrophiée ou mal conformée. Animal non rentable. À programmer pour la réforme.",
+   svg:`<ellipse cx="100" cy="68" rx="32" ry="14" fill="#1e3322" stroke="#e05252" stroke-width="2"/>
+<line x1="88" y1="82" x2="88" y2="90" stroke="#e05252" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="112" y1="82" x2="112" y2="88" stroke="#e05252" stroke-width="1.5" stroke-linecap="round"/>
+<text x="100" y="18" text-anchor="middle" fill="#e05252" font-size="11" font-weight="700">Très faible production</text>
+<text x="100" y="32" text-anchor="middle" fill="#6b8f72" font-size="9">Mamelle atrophiée ou mal conformée</text>`},
+  {label:'Réforme',sub:'Production nulle ou pathologique',tags:['Réforme immédiate','Mammite chronique'],
+   desc:"<strong>À observer :</strong> Mammite chronique, production nulle ou négative, infection incurable. Réforme immédiate obligatoire.",
+   svg:`<ellipse cx="100" cy="70" rx="24" ry="11" fill="#1e3322" stroke="#cc2233" stroke-width="2"/>
+<line x1="90" y1="81" x2="90" y2="88" stroke="#cc2233" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="110" y1="81" x2="110" y2="88" stroke="#cc2233" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="82" y1="38" x2="118" y2="60" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="118" y1="38" x2="82" y2="60" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<text x="100" y="18" text-anchor="middle" fill="#cc2233" font-size="11" font-weight="700">Réforme immédiate</text>
+<text x="100" y="32" text-anchor="middle" fill="#6b8f72" font-size="9">Mammite chronique · Production nulle</text>`},
+]},
+
+{id:'mamelle',icon:'🍼',label:'Mamelle',title:'Conformation mamelle',
+ desc:"Forme, attache, symétrie du pis et orientation des trayons. S'évalue avant la traite mamelle pleine. Critère clé pour la facilité de traite et la sélection des reproductrices.",
+ scale:['Attache haute','Légère diver.','Plancher bas','Pendante','Trayons horiz.','Atrophie'],
+ notes:[
+  {label:'Excellente',sub:'Conformation idéale',tags:['Attache haute','Trayons verticaux'],
+   desc:"<strong>À observer :</strong> Attache haute et large, plancher horizontal élevé (au-dessus du jarret), trayons verticaux bien orientés, symétrie parfaite. Idéale pour la traite mécanique.",
+   svg:`<ellipse cx="100" cy="44" rx="55" ry="19" fill="#1a2e1c" stroke="#3dba6a" stroke-width="1.5"/>
+<ellipse cx="100" cy="66" rx="42" ry="18" fill="#1e3322" stroke="#3dba6a" stroke-width="2"/>
+<path d="M 60 71 Q 100 65 140 71" stroke="#3dba6a" stroke-width="1.5" fill="none" stroke-dasharray="4"/>
+<rect x="83" y="82" width="8" height="16" rx="4" fill="#3dba6a" opacity=".7"/>
+<rect x="109" y="82" width="8" height="16" rx="4" fill="#3dba6a" opacity=".7"/>
+<text x="100" y="14" text-anchor="middle" fill="#3dba6a" font-size="10" font-weight="700">Attache haute · Plancher haut</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Trayons verticaux · Symétrie parfaite</text>`},
+  {label:'Bonne',sub:'Légère divergence',tags:['Légère divergence','Bonne reproductrice'],
+   desc:"<strong>À observer :</strong> Bonne attache, plancher correct, légère divergence des trayons ou légère asymétrie. Traite mécanique possible. Bonne valeur génétique.",
+   svg:`<ellipse cx="100" cy="45" rx="55" ry="19" fill="#1a2e1c" stroke="#7ed67a" stroke-width="1.5"/>
+<ellipse cx="100" cy="68" rx="40" ry="17" fill="#1e3322" stroke="#7ed67a" stroke-width="2"/>
+<rect x="83" y="83" width="8" height="15" rx="4" fill="#7ed67a" opacity=".6" transform="rotate(5,87,90)"/>
+<rect x="109" y="83" width="8" height="15" rx="4" fill="#7ed67a" opacity=".6" transform="rotate(-5,113,90)"/>
+<text x="100" y="14" text-anchor="middle" fill="#7ed67a" font-size="10" font-weight="700">Bonne conformation</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Légère divergence des trayons</text>`},
+  {label:'Correcte',sub:'Plancher modérément bas',tags:['Plancher bas','Trayons divergents'],
+   desc:"<strong>À observer :</strong> Plancher modérément bas, trayons divergents à 10-20°, asymétrie modérée. Traite mécanique plus difficile. Ne pas sélectionner pour la reproduction.",
+   svg:`<ellipse cx="100" cy="45" rx="55" ry="19" fill="#1a2e1c" stroke="#f5c842" stroke-width="1.5"/>
+<ellipse cx="100" cy="71" rx="36" ry="16" fill="#1e3322" stroke="#f5c842" stroke-width="2"/>
+<path d="M 66 77 Q 100 83 134 77" stroke="#f5c842" stroke-width="1.5" fill="none"/>
+<rect x="83" y="88" width="7" height="14" rx="4" fill="#f5c842" opacity=".5" transform="rotate(12,87,95)"/>
+<rect x="110" y="88" width="7" height="13" rx="4" fill="#f5c842" opacity=".5" transform="rotate(-10,114,95)"/>
+<text x="100" y="14" text-anchor="middle" fill="#f5c842" font-size="10" font-weight="700">Plancher bas · Trayons divergents</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Asymétrie modérée · Ne pas sélectionner</text>`},
+  {label:'Insuffisante',sub:'Mamelle pendante',tags:['Mamelle pendante','Risque mammite'],
+   desc:"<strong>À observer :</strong> Mamelle pendante, attache basse, trayons très divergents (>30°). Risque élevé de mammite et blessures au sol. À exclure de la sélection.",
+   svg:`<ellipse cx="100" cy="45" rx="55" ry="19" fill="#1a2e1c" stroke="#f5a042" stroke-width="1.5"/>
+<ellipse cx="100" cy="75" rx="32" ry="20" fill="#1e3322" stroke="#f5a042" stroke-width="2"/>
+<path d="M 70 81 Q 100 94 130 81" stroke="#f5a042" stroke-width="1.5" fill="none"/>
+<rect x="83" y="95" width="7" height="13" rx="4" fill="#f5a042" opacity=".5" transform="rotate(22,87,101)"/>
+<rect x="110" y="96" width="7" height="12" rx="4" fill="#f5a042" opacity=".5" transform="rotate(-18,114,102)"/>
+<text x="100" y="14" text-anchor="middle" fill="#f5a042" font-size="10" font-weight="700">Mamelle pendante</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Attache basse · Trayons très divergents</text>`},
+  {label:'Mauvaise',sub:'Trayons horizontaux',tags:['Trayons horizontaux','Réforme programmée'],
+   desc:"<strong>À observer :</strong> Trayons horizontaux ou inversés, mamelle très basse. Traite mécanique impossible, blessures fréquentes. Réforme à programmer rapidement.",
+   svg:`<ellipse cx="100" cy="45" rx="55" ry="19" fill="#1a2e1c" stroke="#e05252" stroke-width="1.5"/>
+<ellipse cx="98" cy="80" rx="28" ry="21" fill="#1e3322" stroke="#e05252" stroke-width="2"/>
+<path d="M 71 87 Q 98 101 125 87" stroke="#e05252" stroke-width="1.5" fill="none"/>
+<rect x="77" y="100" width="13" height="5" rx="3" fill="#e05252" opacity=".5" transform="rotate(85,84,103)"/>
+<rect x="109" y="100" width="11" height="5" rx="3" fill="#e05252" opacity=".5" transform="rotate(-82,115,103)"/>
+<text x="100" y="14" text-anchor="middle" fill="#e05252" font-size="10" font-weight="700">Trayons horizontaux</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Traite mécanique impossible · Blessures</text>`},
+  {label:'Éliminatoire',sub:'Atrophie / Mammite chronique',tags:['Réforme immédiate','Éliminatoire'],
+   desc:"<strong>À observer :</strong> Mamelle fusionnée, hémi-mamelle atrophiée, mammite chronique incurable, kystes lactés multiples. Réforme immédiate obligatoire.",
+   svg:`<ellipse cx="100" cy="45" rx="55" ry="19" fill="#1a2e1c" stroke="#cc2233" stroke-width="1.5"/>
+<ellipse cx="100" cy="77" rx="25" ry="19" fill="#1e3322" stroke="#cc2233" stroke-width="2"/>
+<line x1="82" y1="46" x2="118" y2="67" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="118" y1="46" x2="82" y2="67" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<text x="100" y="14" text-anchor="middle" fill="#cc2233" font-size="10" font-weight="700">Défaut éliminatoire</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Mammite chronique · Atrophie · Fusion</text>`},
+]},
+
+{id:'aplombs',icon:'🦵',label:'Aplombs',title:'Aplombs',
+ desc:"Qualité des membres et position des pattes, vue de face et de profil. S'observe à la marche et à l'arrêt. Des aplombs défectueux réduisent la productivité et la longévité.",
+ scale:['Membres droits','Légère dév.','Campage mod.','Jarrets coudés','Boiterie prob.','Boiterie chr.'],
+ notes:[
+  {label:'Parfaits',sub:'Aplombs idéaux',tags:['Membres droits','Longévité max'],
+   desc:"<strong>À observer :</strong> Membres parfaitement droits de face et de profil. Angle du jarret correct (150-160°), sabots bien formés. Excellente longévité prévisible.",
+   svg:`<ellipse cx="100" cy="40" rx="60" ry="22" fill="#1e3322" stroke="#3dba6a" stroke-width="1.5"/>
+<line x1="68" y1="60" x2="68" y2="100" stroke="#3dba6a" stroke-width="4" stroke-linecap="round"/>
+<line x1="87" y1="61" x2="87" y2="100" stroke="#3dba6a" stroke-width="4" stroke-linecap="round"/>
+<line x1="113" y1="61" x2="113" y2="100" stroke="#3dba6a" stroke-width="4" stroke-linecap="round"/>
+<line x1="132" y1="60" x2="132" y2="100" stroke="#3dba6a" stroke-width="4" stroke-linecap="round"/>
+<line x1="52" y1="100" x2="148" y2="100" stroke="#3dba6a" stroke-width="1" stroke-dasharray="4" opacity=".5"/>
+<text x="100" y="14" text-anchor="middle" fill="#3dba6a" font-size="10" font-weight="700">Membres parfaitement droits</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Vue face et profil · Angle jarret 150-160°</text>`},
+  {label:'Bons',sub:'Très légère déviation',tags:['Légère déviation','À conserver'],
+   desc:"<strong>À observer :</strong> Très légère déviation des membres, jarret légèrement plus fermé. Fonctionnel sans boiterie. À conserver mais à ne pas prioritiser pour la reproduction.",
+   svg:`<ellipse cx="100" cy="40" rx="60" ry="22" fill="#1e3322" stroke="#7ed67a" stroke-width="1.5"/>
+<line x1="68" y1="60" x2="66" y2="100" stroke="#7ed67a" stroke-width="4" stroke-linecap="round"/>
+<line x1="87" y1="61" x2="89" y2="100" stroke="#7ed67a" stroke-width="4" stroke-linecap="round"/>
+<line x1="113" y1="61" x2="111" y2="100" stroke="#7ed67a" stroke-width="4" stroke-linecap="round"/>
+<line x1="132" y1="60" x2="134" y2="100" stroke="#7ed67a" stroke-width="4" stroke-linecap="round"/>
+<text x="100" y="14" text-anchor="middle" fill="#7ed67a" font-size="10" font-weight="700">Très légère déviation</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Fonctionnel · Légèrement en dehors de l'idéal</text>`},
+  {label:'Corrects',sub:'Campage modéré',tags:['Campage modéré','À surveiller'],
+   desc:"<strong>À observer :</strong> Légère déviation des membres (campage ou serrage modéré), jarret légèrement coudé. Fonctionnel sans boiterie mais à ne pas sélectionner.",
+   svg:`<ellipse cx="100" cy="40" rx="60" ry="22" fill="#1e3322" stroke="#f5c842" stroke-width="1.5"/>
+<line x1="68" y1="60" x2="64" y2="100" stroke="#f5c842" stroke-width="4" stroke-linecap="round"/>
+<line x1="87" y1="61" x2="91" y2="100" stroke="#f5c842" stroke-width="4" stroke-linecap="round"/>
+<line x1="113" y1="61" x2="109" y2="100" stroke="#f5c842" stroke-width="4" stroke-linecap="round"/>
+<line x1="132" y1="60" x2="136" y2="100" stroke="#f5c842" stroke-width="4" stroke-linecap="round"/>
+<text x="100" y="14" text-anchor="middle" fill="#f5c842" font-size="10" font-weight="700">Légère déviation</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Campage modéré · Jarret légèrement coudé</text>`},
+  {label:'Défauts importants',sub:'Jarrets coudés',tags:['Jarrets coudés','Exclure sélection'],
+   desc:"<strong>À observer :</strong> Jarrets fortement coudés (angle <140°), membres déviés en dedans ou en dehors de façon marquée. Risque élevé de boiterie. À exclure de la sélection.",
+   svg:`<ellipse cx="100" cy="40" rx="60" ry="22" fill="#1e3322" stroke="#f5a042" stroke-width="1.5"/>
+<path d="M 68 60 L 73 82 L 65 100" stroke="#f5a042" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 87 61 L 82 82 L 90 100" stroke="#f5a042" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 113 61 L 118 82 L 110 100" stroke="#f5a042" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 132 60 L 127 82 L 135 100" stroke="#f5a042" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="100" y="14" text-anchor="middle" fill="#f5a042" font-size="10" font-weight="700">Jarrets coudés (aplombs en vache)</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Risque élevé de boiterie à terme</text>`},
+  {label:'Graves',sub:'Boiterie probable',tags:['Boiterie intermittente','Réforme programmée'],
+   desc:"<strong>À observer :</strong> Déformations importantes des membres, boiterie intermittente, sabots déformés. Boiterie chronique très probable à court terme. Réforme à programmer.",
+   svg:`<ellipse cx="100" cy="40" rx="60" ry="22" fill="#1e3322" stroke="#e05252" stroke-width="1.5"/>
+<path d="M 68 60 L 76 80 L 62 100" stroke="#e05252" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 87 61 L 80 80 L 94 100" stroke="#e05252" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 113 61 L 120 80 L 106 100" stroke="#e05252" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 132 60 L 140 80 L 126 100" stroke="#e05252" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="100" y="14" text-anchor="middle" fill="#e05252" font-size="10" font-weight="700">Déformations graves</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Boiterie intermittente · Sabots déformés</text>`},
+  {label:'Éliminatoire',sub:'Boiterie chronique',tags:['Boiterie chronique','Réforme immédiate'],
+   desc:"<strong>À observer :</strong> Boiterie chronique visible à la marche, arthrose avancée ou fourbure chronique. Réforme immédiate obligatoire.",
+   svg:`<ellipse cx="100" cy="40" rx="60" ry="22" fill="#1e3322" stroke="#cc2233" stroke-width="1.5"/>
+<path d="M 68 60 L 78 82 L 60 100" stroke="#cc2233" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 87 61 L 78 82 L 96 100" stroke="#cc2233" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="113" y1="61" x2="113" y2="100" stroke="#cc2233" stroke-width="4" stroke-linecap="round"/>
+<path d="M 132 60 L 142 82 L 125 100" stroke="#cc2233" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="82" y1="33" x2="118" y2="55" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="118" y1="33" x2="82" y2="55" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<text x="100" y="14" text-anchor="middle" fill="#cc2233" font-size="10" font-weight="700">Boiterie chronique</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Arthrose · Fourbure · Réforme immédiate</text>`},
+]},
+
+{id:'nec',icon:'⚖️',label:'NEC',title:'État corporel (NEC)',
+ desc:"Note d'État Corporel. <strong>Comment palper :</strong> posez les deux mains de chaque côté de la colonne lombaire (zone des reins) et appuyez. Observez également les côtes.",
+ scale:['NEC 2.5-3','NEC 3-3.5','<2 ou >3.5','<1.5 ou >4','NEC <1','Cachexie'],
+ notes:[
+  {label:'Parfait',sub:'NEC 2.5 à 3 — Optimal en lactation',tags:['NEC 2.5-3','Optimal'],
+   desc:"<strong>Au toucher :</strong> Apophyses lombaires légèrement arrondies, palpables avec une légère pression. Fine couche de gras. Côtes visibles mais non saillantes. État idéal en milieu de lactation.",
+   svg:`<ellipse cx="100" cy="48" rx="65" ry="28" fill="#1e3322" stroke="#3dba6a" stroke-width="2"/>
+<line x1="80" y1="33" x2="82" y2="63" stroke="#3dba6a" stroke-width="1" opacity=".4"/>
+<line x1="90" y1="31" x2="92" y2="65" stroke="#3dba6a" stroke-width="1" opacity=".4"/>
+<line x1="100" y1="30" x2="102" y2="66" stroke="#3dba6a" stroke-width="1" opacity=".4"/>
+<path d="M 38 36 Q 100 29 162 36" stroke="#3dba6a" stroke-width="2" fill="none"/>
+<text x="100" y="14" text-anchor="middle" fill="#3dba6a" font-size="10" font-weight="700">NEC optimal · Dos droit</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Côtes palpables · Fine couche de gras</text>`},
+  {label:'Bon',sub:'NEC 3 à 3.5 — Légère surcondition',tags:['NEC 3-3.5','Acceptable'],
+   desc:"<strong>Au toucher :</strong> Apophyses palpables avec pression modérée, bien recouvertes de gras. Côtes non visibles. Légèrement au-dessus de l'optimum. Acceptable, à surveiller.",
+   svg:`<ellipse cx="100" cy="50" rx="65" ry="27" fill="#1e3322" stroke="#7ed67a" stroke-width="2"/>
+<path d="M 38 39 Q 100 31 162 39" stroke="#7ed67a" stroke-width="2" fill="none"/>
+<text x="100" y="14" text-anchor="middle" fill="#7ed67a" font-size="10" font-weight="700">Bonne réserve corporelle</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Apophyses palpables avec pression modérée</text>`},
+  {label:'Moyen',sub:'NEC <2 ou >3.5 — À corriger',tags:['À corriger','Alimentation'],
+   desc:"<strong>Au toucher :</strong> <em>Maigre (NEC&lt;2) :</em> apophyses très pointues sans pression, côtes en tableau. <em>Gras (NEC&gt;3.5) :</em> apophyses non palpables sans forte pression. Correction alimentaire urgente.",
+   svg:`<ellipse cx="100" cy="52" rx="58" ry="23" fill="#1e3322" stroke="#f5c842" stroke-width="2"/>
+<text x="100" y="14" text-anchor="middle" fill="#f5c842" font-size="10" font-weight="700">Maigre (&lt;2) ou surpoids (&gt;3.5)</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Correction alimentaire urgente nécessaire</text>`},
+  {label:'Mauvais',sub:'NEC <1.5 ou >4',tags:['Intervention vétérinaire','Urgence'],
+   desc:"<strong>Au toucher :</strong> <em>Très maigre :</em> apophyses saillantes, côtes très visibles, hanches osseuses. <em>Très gras :</em> masse graisseuse importante. Intervention vétérinaire nécessaire.",
+   svg:`<ellipse cx="100" cy="54" rx="50" ry="20" fill="#1e3322" stroke="#f5a042" stroke-width="2"/>
+<line x1="82" y1="40" x2="84" y2="68" stroke="#f5a042" stroke-width="1.5" opacity=".7"/>
+<line x1="92" y1="38" x2="94" y2="70" stroke="#f5a042" stroke-width="1.5" opacity=".7"/>
+<line x1="102" y1="37" x2="104" y2="71" stroke="#f5a042" stroke-width="1.5" opacity=".7"/>
+<text x="100" y="14" text-anchor="middle" fill="#f5a042" font-size="10" font-weight="700">NEC &lt;1.5 ou &gt;4</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Intervention vétérinaire nécessaire</text>`},
+  {label:'Médiocre',sub:'NEC <1 — État critique',tags:['Urgence vétérinaire','NEC <1'],
+   desc:"<strong>Au toucher :</strong> Apophyses très saillantes sans pression. Côtes visibles à distance. Dos en arête. État d'urgence, intervention vétérinaire immédiate.",
+   svg:`<ellipse cx="100" cy="48" rx="58" ry="19" fill="#1e3322" stroke="#e05252" stroke-width="2"/>
+<line x1="75" y1="33" x2="78" y2="63" stroke="#e05252" stroke-width="1.5" opacity=".8"/>
+<line x1="85" y1="31" x2="88" y2="65" stroke="#e05252" stroke-width="1.5" opacity=".8"/>
+<line x1="95" y1="30" x2="98" y2="66" stroke="#e05252" stroke-width="1.5" opacity=".8"/>
+<line x1="105" y1="30" x2="108" y2="66" stroke="#e05252" stroke-width="1.5" opacity=".8"/>
+<path d="M 44 38 Q 100 46 156 38" stroke="#e05252" stroke-width="2" fill="none"/>
+<text x="100" y="14" text-anchor="middle" fill="#e05252" font-size="10" font-weight="700">État critique · Dos en arête</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Côtes très visibles · Urgence immédiate</text>`},
+  {label:'Cachexie',sub:'NEC <0.5 — État cachectique',tags:['Urgence absolue','Réforme immédiate'],
+   desc:"<strong>Au toucher :</strong> Apophyses très saillantes, côtes visibles à distance (\"tableau de piano\"), dos en arête prononcé. Urgence vétérinaire absolue. Réforme ou traitement intensif immédiat.",
+   svg:`<ellipse cx="100" cy="48" rx="55" ry="17" fill="#1e3322" stroke="#cc2233" stroke-width="2"/>
+<line x1="72" y1="33" x2="75" y2="63" stroke="#cc2233" stroke-width="1.5" opacity=".9"/>
+<line x1="82" y1="31" x2="85" y2="65" stroke="#cc2233" stroke-width="1.5" opacity=".9"/>
+<line x1="92" y1="30" x2="95" y2="66" stroke="#cc2233" stroke-width="1.5" opacity=".9"/>
+<line x1="102" y1="30" x2="105" y2="66" stroke="#cc2233" stroke-width="1.5" opacity=".9"/>
+<line x1="112" y1="30" x2="115" y2="63" stroke="#cc2233" stroke-width="1.5" opacity=".9"/>
+<path d="M 46 38 Q 100 47 154 38" stroke="#cc2233" stroke-width="2" fill="none"/>
+<line x1="82" y1="16" x2="118" y2="36" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="118" y1="16" x2="82" y2="36" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<text x="100" y="10" text-anchor="middle" fill="#cc2233" font-size="10" font-weight="700">Cachexie · Urgence absolue</text>
+<text x="100" y="23" text-anchor="middle" fill="#6b8f72" font-size="8">Côtes en tableau de piano · Dos en arête</text>`},
+]},
+
+{id:'generale',icon:'🐐',label:'Conform.',title:'Conformation générale',
+ desc:"Appréciation globale de la morphologie : silhouette, profondeur de poitrine, rectitude du dos, longueur des cuisses et angularité.",
+ scale:['Type laitier parfait','Légères irrég.','Dos ensellé','Type faible','Type viande','Malformation'],
+ notes:[
+  {label:'Excellent',sub:'Morphologie idéale',tags:['Profil en coin','Grand gabarit'],
+   desc:"<strong>À observer :</strong> Silhouette en coin (avant fin, arrière large et profond), poitrine longue et profonde, dos parfaitement droit, cuisses longues et plates. Type laitier prononcé.",
+   svg:`<path d="M 28 85 Q 38 44 80 34 L 155 34 Q 175 36 178 50 L 178 85 Q 155 90 100 90 Q 58 90 28 85 Z" fill="#1e3322" stroke="#3dba6a" stroke-width="2"/>
+<circle cx="30" cy="77" r="13" fill="#1e3322" stroke="#3dba6a" stroke-width="1.5"/>
+<line x1="78" y1="88" x2="75" y2="108" stroke="#3dba6a" stroke-width="3" stroke-linecap="round"/>
+<line x1="96" y1="89" x2="94" y2="108" stroke="#3dba6a" stroke-width="3" stroke-linecap="round"/>
+<line x1="148" y1="87" x2="146" y2="108" stroke="#3dba6a" stroke-width="3" stroke-linecap="round"/>
+<line x1="166" y1="85" x2="164" y2="108" stroke="#3dba6a" stroke-width="3" stroke-linecap="round"/>
+<text x="112" y="14" text-anchor="middle" fill="#3dba6a" font-size="10" font-weight="700">Profil en coin · Poitrine profonde</text>
+<text x="112" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Dos droit · Cuisses longues · Grand gabarit</text>`},
+  {label:'Bon',sub:'Très bonne morphologie',tags:['Bonne morphologie','À conserver'],
+   desc:"<strong>À observer :</strong> Bonne morphologie générale avec quelques légères irrégularités. Gabarit correct, dos légèrement ensellé. Animal à conserver.",
+   svg:`<path d="M 32 87 Q 42 50 76 42 L 148 40 Q 166 42 170 55 L 170 87 Q 148 92 100 92 Q 62 92 32 87 Z" fill="#1e3322" stroke="#7ed67a" stroke-width="2"/>
+<circle cx="34" cy="79" r="12" fill="#1e3322" stroke="#7ed67a" stroke-width="1.5"/>
+<line x1="74" y1="90" x2="74" y2="108" stroke="#7ed67a" stroke-width="3" stroke-linecap="round"/>
+<line x1="92" y1="91" x2="92" y2="108" stroke="#7ed67a" stroke-width="3" stroke-linecap="round"/>
+<line x1="138" y1="90" x2="138" y2="108" stroke="#7ed67a" stroke-width="3" stroke-linecap="round"/>
+<line x1="156" y1="88" x2="156" y2="108" stroke="#7ed67a" stroke-width="3" stroke-linecap="round"/>
+<text x="105" y="14" text-anchor="middle" fill="#7ed67a" font-size="10" font-weight="700">Bonne morphologie</text>
+<text x="105" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Légères irrégularités · À conserver</text>`},
+  {label:'Correct',sub:'Dos ensellé · Gabarit insuffisant',tags:['Dos ensellé','Gabarit insuffisant'],
+   desc:"<strong>À observer :</strong> Dos légèrement ensellé, gabarit insuffisant, animal plus rond qu'anguleux, poitrine peu profonde. Type laitier peu prononcé. Ne pas sélectionner.",
+   svg:`<path d="M 32 88 Q 42 54 76 46 Q 103 54 152 42 Q 168 44 170 58 L 170 88 Q 150 93 100 93 Q 62 93 32 88 Z" fill="#1e3322" stroke="#f5c842" stroke-width="2"/>
+<circle cx="34" cy="80" r="12" fill="#1e3322" stroke="#f5c842" stroke-width="1.5"/>
+<line x1="74" y1="91" x2="74" y2="108" stroke="#f5c842" stroke-width="3" stroke-linecap="round"/>
+<line x1="92" y1="92" x2="92" y2="108" stroke="#f5c842" stroke-width="3" stroke-linecap="round"/>
+<line x1="138" y1="91" x2="138" y2="108" stroke="#f5c842" stroke-width="3" stroke-linecap="round"/>
+<line x1="156" y1="89" x2="156" y2="108" stroke="#f5c842" stroke-width="3" stroke-linecap="round"/>
+<text x="105" y="14" text-anchor="middle" fill="#f5c842" font-size="10" font-weight="700">Dos ensellé · Type laitier faible</text>
+<text x="105" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Gabarit insuffisant · Animal rond</text>`},
+  {label:'Insuffisant',sub:'Type laitier très faible',tags:['Type laitier absent','Exclure sélection'],
+   desc:"<strong>À observer :</strong> Dos très ensellé, animal trapu et rond, gabarit nettement insuffisant, absence de caractère laitier. À exclure de toute sélection.",
+   svg:`<path d="M 35 88 Q 45 65 75 58 L 148 56 Q 163 58 166 70 L 166 88 Q 146 93 100 93 Q 62 93 35 88 Z" fill="#1e3322" stroke="#f5a042" stroke-width="2"/>
+<circle cx="37" cy="82" r="11" fill="#1e3322" stroke="#f5a042" stroke-width="1.5"/>
+<line x1="74" y1="91" x2="74" y2="108" stroke="#f5a042" stroke-width="3" stroke-linecap="round"/>
+<line x1="140" y1="91" x2="140" y2="108" stroke="#f5a042" stroke-width="3" stroke-linecap="round"/>
+<text x="105" y="14" text-anchor="middle" fill="#f5a042" font-size="10" font-weight="700">Type laitier très faible</text>
+<text x="105" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Animal trapu · Gabarit nettement insuffisant</text>`},
+  {label:'Mauvais',sub:'Type viande',tags:['Type viande','Non laitier'],
+   desc:"<strong>À observer :</strong> Morphologie de type viande (animal musclé, court, rond), absence totale de caractère laitier. Production très limitée prévisible. Réforme à programmer.",
+   svg:`<path d="M 38 86 Q 48 68 76 62 L 148 60 Q 162 62 164 74 L 164 86 Q 146 91 100 91 Q 62 91 38 86 Z" fill="#1e3322" stroke="#e05252" stroke-width="2"/>
+<circle cx="40" cy="80" r="10" fill="#1e3322" stroke="#e05252" stroke-width="1.5"/>
+<line x1="74" y1="89" x2="74" y2="108" stroke="#e05252" stroke-width="3" stroke-linecap="round"/>
+<line x1="140" y1="89" x2="140" y2="108" stroke="#e05252" stroke-width="3" stroke-linecap="round"/>
+<text x="105" y="14" text-anchor="middle" fill="#e05252" font-size="10" font-weight="700">Type viande · Non laitier</text>
+<text x="105" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Animal court et musclé · À réformer</text>`},
+  {label:'Éliminatoire',sub:'Malformation congénitale',tags:['Malformation','Réforme immédiate'],
+   desc:"<strong>À observer :</strong> Nanisme, malformation congénitale visible, hermaphrodisme, agénésie ou difformité importante. Réforme immédiate et exclusion de toute reproduction.",
+   svg:`<path d="M 38 88 Q 48 68 76 60 L 148 60 Q 162 62 164 74 L 164 88 Q 146 93 100 93 Q 62 93 38 88 Z" fill="#1e3322" stroke="#cc2233" stroke-width="2"/>
+<circle cx="40" cy="82" r="10" fill="#1e3322" stroke="#cc2233" stroke-width="1.5"/>
+<line x1="88" y1="38" x2="128" y2="62" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="128" y1="38" x2="88" y2="62" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<text x="105" y="14" text-anchor="middle" fill="#cc2233" font-size="10" font-weight="700">Défaut éliminatoire</text>
+<text x="105" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Nanisme · Malformation · Hermaphrodisme</text>`},
+]},
+
+{id:'ossature',icon:'🦴',label:'Ossature',title:'Ossature / Gabarit',
+ desc:"Développement osseux et gabarit général par rapport à la race. S'évalue en observant le périmètre thoracique, les articulations et la taille générale.",
+ scale:['Grand gabarit','Bon développ.','Gabarit moyen','Ossature fine','Petit gabarit','Nanisme'],
+ notes:[
+  {label:'Excellent',sub:'Ossature et gabarit idéaux',tags:['Grand gabarit','Longévité max'],
+   desc:"<strong>À observer :</strong> Grand gabarit pour la race, périmètre thoracique important, côtes larges et bien ouvertes, ossature fine mais solide, articulations nettes. Longévité maximale.",
+   svg:`<ellipse cx="100" cy="48" rx="65" ry="28" fill="#1e3322" stroke="#3dba6a" stroke-width="2"/>
+<ellipse cx="100" cy="48" rx="50" ry="20" fill="none" stroke="#3dba6a" stroke-width="1" stroke-dasharray="3" opacity=".5"/>
+<line x1="78" y1="33" x2="80" y2="63" stroke="#3dba6a" stroke-width="1.5" opacity=".6"/>
+<line x1="88" y1="30" x2="90" y2="66" stroke="#3dba6a" stroke-width="1.5" opacity=".6"/>
+<line x1="98" y1="29" x2="100" y2="67" stroke="#3dba6a" stroke-width="1.5" opacity=".6"/>
+<text x="100" y="14" text-anchor="middle" fill="#3dba6a" font-size="10" font-weight="700">Grand gabarit · Ossature forte</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Côtes larges · Poitrine profonde · Articulations nettes</text>`},
+  {label:'Bon',sub:'Bon développement',tags:['Bon gabarit','À conserver'],
+   desc:"<strong>À observer :</strong> Bon gabarit légèrement en-dessous du maximum, bonne ossature, poitrine bien développée. Animal à conserver, utilisable en reproduction.",
+   svg:`<ellipse cx="100" cy="50" rx="60" ry="26" fill="#1e3322" stroke="#7ed67a" stroke-width="2"/>
+<line x1="82" y1="36" x2="84" y2="64" stroke="#7ed67a" stroke-width="1.5" opacity=".6"/>
+<line x1="92" y1="34" x2="94" y2="66" stroke="#7ed67a" stroke-width="1.5" opacity=".6"/>
+<line x1="102" y1="33" x2="104" y2="67" stroke="#7ed67a" stroke-width="1.5" opacity=".6"/>
+<text x="100" y="14" text-anchor="middle" fill="#7ed67a" font-size="10" font-weight="700">Bon gabarit</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Ossature correcte · Légèrement en-dessous du max</text>`},
+  {label:'Correct',sub:'Gabarit dans la moyenne',tags:['Gabarit moyen','Poitrine étroite'],
+   desc:"<strong>À observer :</strong> Gabarit dans la moyenne basse de la race, poitrine correcte mais peu profonde, côtes moins ouvertes. Fonctionnel mais à ne pas sélectionner prioritairement.",
+   svg:`<ellipse cx="100" cy="52" rx="52" ry="23" fill="#1e3322" stroke="#f5c842" stroke-width="2"/>
+<text x="100" y="14" text-anchor="middle" fill="#f5c842" font-size="10" font-weight="700">Gabarit dans la moyenne</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Côtes moins ouvertes · Poitrine correcte</text>`},
+  {label:'Insuffisant',sub:'Petit gabarit · Ossature fine',tags:['Ossature fine','Exclure sélection'],
+   desc:"<strong>À observer :</strong> Petit gabarit nettement en-dessous de la moyenne de la race, ossature trop fine, poitrine étroite. Fragilité probable, longévité réduite. À exclure de la sélection.",
+   svg:`<ellipse cx="100" cy="54" rx="42" ry="19" fill="#1e3322" stroke="#f5a042" stroke-width="2"/>
+<text x="100" y="14" text-anchor="middle" fill="#f5a042" font-size="10" font-weight="700">Petit gabarit · Ossature trop fine</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Poitrine étroite · Fragilité probable</text>`},
+  {label:'Mauvais',sub:'Très petit gabarit',tags:['Très petit gabarit','Réforme programmée'],
+   desc:"<strong>À observer :</strong> Très petit gabarit, ossature très fine et fragile, poitrine très étroite. Fragilité importante, mauvaise adaptation aux conditions d'élevage. Réforme programmée.",
+   svg:`<ellipse cx="100" cy="58" rx="32" ry="15" fill="#1e3322" stroke="#e05252" stroke-width="2"/>
+<text x="100" y="14" text-anchor="middle" fill="#e05252" font-size="10" font-weight="700">Très petit gabarit</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Ossature très fine · Fragilité importante</text>`},
+  {label:'Éliminatoire',sub:'Nanisme ou malformation osseuse',tags:['Nanisme','Réforme immédiate'],
+   desc:"<strong>À observer :</strong> Nanisme évident (taille très inférieure à la race), malformation osseuse visible, fractures multiples. Réforme immédiate obligatoire.",
+   svg:`<ellipse cx="100" cy="60" rx="28" ry="13" fill="#1e3322" stroke="#cc2233" stroke-width="2"/>
+<line x1="82" y1="30" x2="118" y2="52" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="118" y1="30" x2="82" y2="52" stroke="#cc2233" stroke-width="2.5" stroke-linecap="round"/>
+<text x="100" y="14" text-anchor="middle" fill="#cc2233" font-size="10" font-weight="700">Nanisme · Malformation osseuse</text>
+<text x="100" y="27" text-anchor="middle" fill="#6b8f72" font-size="8">Taille très inférieure à la race</text>`},
+]},
+];
+
+// ── Rendu ──────────────────────────────────────────────────────────────────
+function render(){
+  document.getElementById('nav').innerHTML=CRITERES.map((c,i)=>
+    `<button onclick="show('${c.id}',this)"${i===0?' class="active"':''}>${c.icon} ${c.label}</button>`).join('');
+
+  document.getElementById('content').innerHTML=CRITERES.map((c,i)=>`
+<div id="panel-${c.id}" style="display:${i===0?'block':'none'}">
+  <div class="intro"><div class="intro-icon">${c.icon}</div><div>
+    <h2>${c.title}</h2><p>${c.desc}</p></div></div>
+  <div class="grid">${c.notes.map((n,j)=>`
+    <div class="card">
+      <div class="card-head"><div class="badge" style="background:${C[j]}">${j+1}</div>
+        <div><div class="card-label">${n.label}</div><div class="card-sub">${n.sub}</div></div></div>
+      <div class="illus">
+        <img src="images/${c.id}_${j+1}.png" alt="${n.label}"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+             style="width:100%;max-height:200px;object-fit:cover;border-radius:4px;">
+        <div style="display:none;width:100%;height:160px;border:2px dashed var(--brd);border-radius:8px;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:var(--muted);">
+          <span style="font-size:1.8rem;">📷</span>
+          <span style="font-size:0.72rem;">${c.id}_${j+1}.png</span>
+        </div>
+      </div>
+      <div class="desc">${n.desc}</div>
+      <div class="tags">${n.tags.map(t=>`<span class="tag" style="color:${C[j]};border-color:${C[j]}">${t}</span>`).join('')}</div>
+    </div>`).join('')}
+  </div>
+  <div class="about">
+    <h3>À propos de CapriScan</h3>
+    <p>CapriScan est une application de gestion de troupeau caprin conçue pour les éleveurs caprins. Elle permet de noter chaque animal selon 6 critères de sélection, de gérer l'inventaire du troupeau, de suivre les événements sanitaires et de synchroniser toutes les données entre appareils via le cloud. Ce guide de notation est un référentiel visuel destiné à accompagner les éleveurs dans leur travail de sélection au quotidien.</p>
+  </div>
+</div>`).join('');
+}
+
+function show(id,btn){
+  CRITERES.forEach(c=>document.getElementById('panel-'+c.id).style.display='none');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+id).style.display='block';
+  btn.classList.add('active');
+  document.getElementById('content').scrollTop=0;
+}
+
+render();
+</script>
+</body>
+</html>
