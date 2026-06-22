@@ -1,7 +1,7 @@
 // ══ CapriScan — Service Worker ══
 // À déposer à la RACINE de ton dépôt GitHub, à côté de index.html
 
-const CACHE_NAME = 'capriscan-v3';
+const CACHE_NAME = 'capriscan-v4';
 
 // Ressources à mettre en cache immédiatement à l'installation
 const PRECACHE = [
