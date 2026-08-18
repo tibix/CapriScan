@@ -1,5 +1,5 @@
 // ══ CapriScan — Service Worker ══
-const CACHE_NAME = 'capriscan-v1.5';
+const CACHE_NAME = 'capriscan-v1.4';
 
 const PRECACHE = [
   './',
